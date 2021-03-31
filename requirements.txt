@@ -1,0 +1,6 @@
+first
+pyee
+aiohttp
+python-multipart
+fastapi[all]
+

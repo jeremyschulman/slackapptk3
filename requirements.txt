@@ -1,6 +1,7 @@
 first
 pyee
-aiohttp
+aiohttp<4.0.0
+orjson
 python-multipart
 fastapi[all]
 

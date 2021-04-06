@@ -215,7 +215,6 @@ class SlackAppTKParser(ArgumentParser):
     @staticmethod
     async def send_help_on_error(rqst, errmsg, helptext):
         resp = Response(rqst)
-
         atts = resp['attachments'] = list()
         try_cmd = f"{rqst.rqst_data['command']} {rqst.rqst_data['text']}"
         atts.append(dict(

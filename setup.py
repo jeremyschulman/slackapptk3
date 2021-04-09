@@ -15,10 +15,10 @@
 from setuptools import setup, find_packages
 
 package_version = open("VERSION").read().strip()
-package_name = 'slackapptk3'
+package_name = "slackapptk3"
 
 
-def requirements(filename='requirements.txt'):
+def requirements(filename="requirements.txt"):
     return open(filename.strip()).readlines()
 
 
@@ -29,10 +29,10 @@ with open("README.md", "r") as fh:
 setup(
     name=package_name,
     version=package_version,
-    description='Python3 Slack App Tookit Gen3',
+    description="Python3 Slack App Tookit Gen3",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    author='Jeremy Schulman',
+    author="Jeremy Schulman",
     packages=find_packages(),
     install_requires=requirements(),
 )

@@ -4,11 +4,7 @@ import time
 
 
 def verify_request(
-    *,
-    timestamp: str,
-    signature: str,
-    request_data: bytes,
-    signing_secret: str
+    *, timestamp: str, signature: str, request_data: bytes, signing_secret: str
 ) -> bool:
     """
     This function validates the received using the process described
@@ -42,11 +38,10 @@ def verify_request(
         # It could be a replay attack, so let's ignore it.
         return False
 
-    req = str.encode('v0:' + str(timestamp) + ':') + request_data
+    req = str.encode("v0:" + str(timestamp) + ":") + request_data
 
-    request_hash = 'v0=' + hmac.new(
-        str.encode(signing_secret),
-        req, hashlib.sha256
-    ).hexdigest()
+    request_hash = (
+        "v0=" + hmac.new(str.encode(signing_secret), req, hashlib.sha256).hexdigest()
+    )
 
     return hmac.compare_digest(request_hash, signature)

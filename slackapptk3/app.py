@@ -46,19 +46,17 @@ from slackapptk3.request.all import (
     DialogRequest,
     InteractiveMessageRequest,
     OptionSelectRequest,
-    ViewRequest
+    ViewRequest,
 )
 
 from slackapptk3.request.action_event import (
-    ActionEvent, BlockActionEvent,
-    InteractiveMessageActionEvent
+    ActionEvent,
+    BlockActionEvent,
+    InteractiveMessageActionEvent,
 )
 
 
-__all__ = [
-    'SlackApp',
-    'SlashCommandCLI'
-]
+__all__ = ["SlackApp", "SlashCommandCLI"]
 
 
 class SlackAppInteractiveHandlers(object):
@@ -80,11 +78,7 @@ class SlackAppCommands(object):
         cmd = self._registry[parser.prog] = SlashCommandCLI(parser=parser)
         return cmd
 
-    async def run(
-        self, *,
-        name: str,
-        rqst: CommandRequest
-    ):
+    async def run(self, *, name: str, rqst: CommandRequest):
         """
         This method is called to process the inbound Slack slash command
         request as invoked by the User.  The calling context is (generally)
@@ -116,7 +110,6 @@ class SlackAppCommands(object):
 
 
 class SlackApp(object):
-
     def __init__(self):
         self.log = getLogger(__name__)
         self.slash_commands: Dict[str, SlashCommandCLI] = dict()
@@ -128,22 +121,17 @@ class SlackApp(object):
         #   https://api.slack.com/interactivity/handling#payloads
 
         self._ic_handlers = {
-
-            'block_actions': self._handle_block_action,
-            'message_actions': self._handle_message_action,
-            'view_closed': self._handle_view_closed_action,
-            'view_submission': self._handle_view_submission_action,
-
+            "block_actions": self._handle_block_action,
+            "message_actions": self._handle_message_action,
+            "view_closed": self._handle_view_closed_action,
+            "view_submission": self._handle_view_submission_action,
             # TODO: deprecate, this is outmoded style of handling attachment
             #       interactive elements
             #       https://api.slack.com/reference/messaging/attachments
-
-            'interactive_message': self._handle_ia_msg_attachment,
-
+            "interactive_message": self._handle_ia_msg_attachment,
             # TODO: migrate Dialogs to Modals
             #       https://api.slack.com/block-kit/dialogs-to-modals
-
-            'dialog_submission': self._handle_dialog_submit
+            "dialog_submission": self._handle_dialog_submit,
         }
 
         self.config = SlackAppConfig()
@@ -152,11 +140,7 @@ class SlackApp(object):
     # HANDLER: slash commands that use the SlashCLI mechanism
     # -------------------------------------------------------------------------
 
-    async def handle_slash_command(
-        self, *,
-        name: str,
-        rqst: CommandRequest
-    ):
+    async def handle_slash_command(self, *, name: str, rqst: CommandRequest):
         """
         This method is called to process the inbound Slack slash command
         request as invoked by the User.  The calling context is (generally)
@@ -185,8 +169,7 @@ class SlackApp(object):
     # -------------------------------------------------------------------------
 
     async def handle_interactive_request(
-        self,
-        rqst: InteractiveRequest
+        self, rqst: InteractiveRequest
     ) -> Optional[Dict]:
         """
         This method should be called by the API route handler bound to the
@@ -211,13 +194,10 @@ class SlackApp(object):
             by the api.slack.com for response.
 
         """
-        p_type = rqst.rqst_data['type']
-        return await self._ic_handlers[p_type](rqst)      # noqa
+        p_type = rqst.rqst_data["type"]
+        return await self._ic_handlers[p_type](rqst)  # noqa
 
-    async def handle_select_request(
-        self,
-        rqst: OptionSelectRequest
-    ):
+    async def handle_select_request(self, rqst: OptionSelectRequest):
         """
 
         Parameters
@@ -244,10 +224,7 @@ class SlackApp(object):
             return callback(rqst)
 
         action = ActionEvent(
-            type=rqst.rqst_type,
-            id=rqst.action_id,
-            value=rqst.value,
-            data={}
+            type=rqst.rqst_type, id=rqst.action_id, value=rqst.value, data={}
         )
 
         # invoke the callback to retrieve the list of Option or OptionGroup
@@ -256,23 +233,25 @@ class SlackApp(object):
 
         res_list = await callback(rqst, action)
         if not res_list:
-            emsg = f'Missing return from select {action.value}, callback: {event}'
+            emsg = f"Missing return from select {action.value}, callback: {event}"
             self.log.info(emsg)
-            return {'options': []}
+            return {"options": []}
 
         if not isinstance(res_list, List):
-            emsg = (f'Unexpected return, not list, from select {action.value}, callback: {event}.  '
-                    f'Got {type(res_list)} instead')
+            emsg = (
+                f"Unexpected return, not list, from select {action.value}, callback: {event}.  "
+                f"Got {type(res_list)} instead"
+            )
             self.log.error(emsg)
             raise SlackAppTKError(emsg, rqst, res_list)
 
         first_res = first(res_list)
         if isinstance(first_res, Option):
-            res_type = 'options'
+            res_type = "options"
         elif isinstance(first_res, OptionGroup):
-            res_type = 'option_groups'
+            res_type = "option_groups"
         else:
-            emsg = f'Unknown return type from select callback: {type(first_res)}'
+            emsg = f"Unknown return type from select callback: {type(first_res)}"
             self.log.error(emsg)
             raise SlackAppTKError(emsg, rqst, res_list)
 
@@ -285,11 +264,7 @@ class SlackApp(object):
     async def _handle_message_action(self, rqst):
         pass
 
-    async def _handle_view_action(
-        self,
-        rqst: ViewRequest,
-        ic_view: pyee.EventEmitter
-    ):
+    async def _handle_view_action(self, rqst: ViewRequest, ic_view: pyee.EventEmitter):
         event = rqst.view.callback_id
         callback = first(ic_view.listeners(event))
 
@@ -319,26 +294,17 @@ class SlackApp(object):
 
         return await callback(rqst, input_values)
 
-    async def _handle_view_submission_action(
-        self,
-        rqst: ViewRequest
-    ):
+    async def _handle_view_submission_action(self, rqst: ViewRequest):
         return await self._handle_view_action(rqst, self.ic.view)
 
-    async def _handle_view_closed_action(
-        self,
-        rqst: ViewRequest
-    ):
+    async def _handle_view_closed_action(self, rqst: ViewRequest):
         return await self._handle_view_action(rqst, self.ic.view_closed)
 
     # -------------------------------------------------------------------------
     # PRIVATE request handlers - per payload type
     # -------------------------------------------------------------------------
 
-    async def _handle_block_action(
-        self,
-        rqst: BlockActionRequest
-    ):
+    async def _handle_block_action(self, rqst: BlockActionRequest):
         """
         This method is called by handle_interactive_request when the User
         generates an event from a block actions element.  As a result, the code
@@ -362,8 +328,8 @@ class SlackApp(object):
         dict
             Response message to send back to api.slack.com
         """
-        payload_action = first(rqst.rqst_data['actions'])
-        event = payload_action['block_id']
+        payload_action = first(rqst.rqst_data["actions"])
+        event = payload_action["block_id"]
         callback = first(self.ic.block_action.listeners(event))
 
         if callback is None:
@@ -384,25 +350,19 @@ class SlackApp(object):
         action = BlockActionEvent(payload_action)
         return await callback(rqst, action)
 
-    async def _handle_dialog_submit(
-        self,
-        rqst: DialogRequest
-    ):
-        event = rqst.rqst_data['callback_id']
-        submission = rqst.rqst_data['submission']
+    async def _handle_dialog_submit(self, rqst: DialogRequest):
+        event = rqst.rqst_data["callback_id"]
+        submission = rqst.rqst_data["submission"]
         callback = first(self.ic.dialog.listeners(event))
 
         if callback is None:
-            msg = f'No dialog handler for event {event}'
+            msg = f"No dialog handler for event {event}"
             self.log.error(msg)
             return ""
 
         return await callback(rqst, submission)
 
-    async def _handle_ia_msg_attachment(
-        self,
-        rqst: InteractiveMessageRequest
-    ):
+    async def _handle_ia_msg_attachment(self, rqst: InteractiveMessageRequest):
         """
         TODO: deprececiate the use of secondary attachmeents.
 
@@ -413,8 +373,8 @@ class SlackApp(object):
         Returns
         -------
         """
-        event = rqst.rqst_data['callback_id']
-        payload_action = first(rqst.rqst_data['actions'])
+        event = rqst.rqst_data["callback_id"]
+        payload_action = first(rqst.rqst_data["actions"])
         action = InteractiveMessageActionEvent(payload_action)
         callback = first(self.ic.imsg.listeners(event))
 

@@ -12,11 +12,12 @@ class DescriptiveOption(JsonObject):
     value_max_length = 75
 
     def __init__(
-        self, *,
+        self,
+        *,
         label: str,
         value: Optional[str] = None,
         description: Optional[str] = None,
-        mrkdwn: Optional[bool] = False
+        mrkdwn: Optional[bool] = False,
     ):
         self.label = label
         self.value = value or label
@@ -40,17 +41,17 @@ class DescriptiveOption(JsonObject):
         self.validate_json()
         as_dict = dict()
 
-        as_dict['text'] = {
-            'type': 'mrkdwn' if self.mrkdwn else 'plain_text',
-            'text': self.label
+        as_dict["text"] = {
+            "type": "mrkdwn" if self.mrkdwn else "plain_text",
+            "text": self.label,
         }
 
-        as_dict['value'] = self.value
+        as_dict["value"] = self.value
 
         if self.description is not None:
-            as_dict['description'] = {
-                'type': 'mrkdwn' if self.mrkdwn else 'plain_text',
-                'text': self.description
+            as_dict["description"] = {
+                "type": "mrkdwn" if self.mrkdwn else "plain_text",
+                "text": self.description,
             }
 
         return as_dict

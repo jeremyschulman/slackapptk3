@@ -16,20 +16,13 @@
 from slackapptk3.messenger import Messenger
 from slackapptk3.request.any import AnyRequest
 
-__all__ = [
-    'AnyRequest',
-    'Response',
-    'Messenger'
-]
+__all__ = ["AnyRequest", "Response", "Messenger"]
 
 
 class Response(Messenger):
-
     def __init__(self, rqst: AnyRequest):
         super(Response, self).__init__(
-            app=rqst.app,
-            channel=rqst.channel,
-            response_url=rqst.response_url
+            app=rqst.app, channel=rqst.channel, response_url=rqst.response_url
         )
 
         self.rqst = rqst
@@ -39,6 +32,5 @@ class Response(Messenger):
         Delete the originating Slack message.
         """
         await self.client.chat_delete(
-            channel=self.rqst.channel,
-            ts=self.rqst.rqst_data['message']['ts']
+            channel=self.rqst.channel, ts=self.rqst.rqst_data["message"]["ts"]
         )

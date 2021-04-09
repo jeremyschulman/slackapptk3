@@ -13,7 +13,7 @@ from inspect import stack, signature
 from argparse import ArgumentParser, SUPPRESS, Namespace
 import logging
 
-from argparse import _VersionAction, _HelpAction, _SubParsersAction     # noqa
+from argparse import _VersionAction, _HelpAction, _SubParsersAction  # noqa
 
 # -----------------------------------------------------------------------------
 # Public Imports
@@ -48,15 +48,12 @@ class SlackAppTKParserExit(Exception):
     processing; the argparse presumes the Help processing calls parser.exit(),
     which would exit the program; that is call sys.exit().
     """
+
     pass
 
 
 class SlackAppTKParser(ArgumentParser):
-    def __init__(
-        self,
-        *vargs,
-        **kwargs
-    ):
+    def __init__(self, *vargs, **kwargs):
         # need to disable adding help initially since if we do not, then the
         # standard argparse _HelpAction would be used during the initialization
         # of the help action, and we need to override this action class.
@@ -71,26 +68,28 @@ class SlackAppTKParser(ArgumentParser):
         # command can be used as the event ID to lookup the callback function
         # associated with the CLI command.
 
-        prog = kwargs['prog']
+        prog = kwargs["prog"]
         self.set_defaults(**{NS_ATTR_CMD: prog})
 
         # override the default 'help' and 'version' actions so that this parser
         # class can send the content via Slack messaging rather than to console
         # output.
 
-        self.register('action', 'help', _TkHelpAction)
-        self.register('action', 'version', _TkVersionAction)
+        self.register("action", "help", _TkHelpAction)
+        self.register("action", "version", _TkVersionAction)
 
         # now add the help argument using the new help action class. The
         # arguments here mirror those used by the arparse package.
 
         self.add_argument(
             # -h
-            self.prefix_chars + 'h',
+            self.prefix_chars + "h",
             # --help
-            self.prefix_chars * 2 + 'help',
-            action='help', default=SUPPRESS,
-            help='show this help message and exit')
+            self.prefix_chars * 2 + "help",
+            action="help",
+            default=SUPPRESS,
+            help="show this help message and exit",
+        )
 
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     #
@@ -99,24 +98,22 @@ class SlackAppTKParser(ArgumentParser):
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     def add_subparsers(self, *vargs, **kwargs):
-        return super().add_subparsers(
-            *vargs,
-            dest=NS_ATTR_CMD,
-            **kwargs)
+        return super().add_subparsers(*vargs, dest=NS_ATTR_CMD, **kwargs)
 
     def error(self, message: Text) -> NoReturn:
         rqst = self.get_origin_rqst()
-
-        asyncio.create_task(self.send_help_on_error(
-            rqst=rqst,
-            errmsg=message,
-            helptext=self.format_help()))
+        message = message.replace(NS_ATTR_CMD, self.prog)
+        asyncio.create_task(
+            self.send_help_on_error(
+                rqst=rqst, errmsg=message, helptext=self.format_help()
+            )
+        )
 
         raise SlackAppTKParserExit()
 
     def exit(self, status: int = ..., message: Optional[Text] = ...):
         if message:
-            log.error(f'parser exit: {message}')
+            log.error(f"parser exit: {message}")
 
     # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     #
@@ -151,7 +148,7 @@ class SlackAppTKParser(ArgumentParser):
 
             # enrich the parser with the help attribute
             for sub_act in sub_par_acts._get_subactions():
-                setattr(choices[sub_act.dest], 'help', sub_act.help)
+                setattr(choices[sub_act.dest], "help", sub_act.help)
 
             return choices
 
@@ -161,7 +158,7 @@ class SlackAppTKParser(ArgumentParser):
     @staticmethod
     def get_origin_rqst():
         for st in stack():
-            ns = st.frame.f_locals.get('namespace')
+            ns = st.frame.f_locals.get("namespace")
             if hasattr(ns, NS_ATTR_RESP):
                 return getattr(ns, NS_ATTR_RESP)
 
@@ -170,19 +167,21 @@ class SlackAppTKParser(ArgumentParser):
     async def send_help(self, rqst: AnyRequest) -> None:
         resp = Response(rqst)
 
-        cmd = rqst.rqst_data['command']
-        txt = rqst.rqst_data['text']
+        cmd = rqst.rqst_data["command"]
+        txt = rqst.rqst_data["text"]
 
-        if '--help' in txt:
-            txt = txt.rpartition(' ')[0]
+        if "--help" in txt:
+            txt = txt.rpartition(" ")[0]
 
-        cmd_str = '%s %s' % (cmd, txt)
+        cmd_str = "%s %s" % (cmd, txt)
 
         helptext = self.format_help()
 
-        await resp.send_response(text=(
-            f'Hi <@{rqst.user_id}>, here is help on the `{cmd_str}` command:\n\n'
-            f"```{helptext}```")
+        await resp.send_response(
+            text=(
+                f"Hi <@{rqst.user_id}>, here is help on the `{cmd_str}` command:\n\n"
+                f"```{helptext}```"
+            )
         )
 
     @staticmethod
@@ -194,50 +193,43 @@ class SlackAppTKParser(ArgumentParser):
         atts = list()
 
         try_cmd = f"{rqst.rqst_data['command']} {rqst.rqst_data['text']}"
-        atts.append(dict(
-            color="#FF0000",    # red
-            pretext=f'Hi <@{rqst.user_id}>, I could not run your command',
-            text=f"```{try_cmd}```",
-            fallback=try_cmd)
+        atts.append(
+            dict(
+                color="#FF0000",  # red
+                pretext=f"Hi <@{rqst.user_id}>, I could not run your command",
+                text=f"```{try_cmd}```",
+                fallback=try_cmd,
+            )
         )
-        atts.append(dict(
-            text=f"```{errmsg}```",
-            fallback=errmsg
-        ))
-        atts.append(dict(
-            pretext='Command help',
-            text=f"```{helptext}```",
-            fallback=helptext
-        ))
+        atts.append(dict(text=f"```{errmsg}```", fallback=errmsg))
+        atts.append(
+            dict(pretext="Command help", text=f"```{helptext}```", fallback=helptext)
+        )
 
         return atts
 
     @staticmethod
     async def send_help_on_error(rqst, errmsg, helptext):
         resp = Response(rqst)
-        atts = resp['attachments'] = list()
+        atts = resp["attachments"] = list()
         try_cmd = f"{rqst.rqst_data['command']} {rqst.rqst_data['text']}"
-        atts.append(dict(
-            color="#FF0000",    # red
-            pretext=f'Hi <@{rqst.user_id}>, I could not run your command',
-            text=f"```{try_cmd}```",
-            fallback=try_cmd)
+        atts.append(
+            dict(
+                color="#FF0000",  # red
+                pretext=f"Hi <@{rqst.user_id}>, I could not run your command",
+                text=f"```{try_cmd}```",
+                fallback=try_cmd,
+            )
         )
-        atts.append(dict(
-            text=f"```{errmsg}```",
-            fallback=errmsg
-        ))
-        atts.append(dict(
-            pretext='Command help',
-            text=f"```{helptext}```",
-            fallback=helptext
-        ))
+        atts.append(dict(text=f"```{errmsg}```", fallback=errmsg))
+        atts.append(
+            dict(pretext="Command help", text=f"```{helptext}```", fallback=helptext)
+        )
 
         await resp.send()
 
 
 class SlashCommandCLI(object):
-
     def __init__(self, parser: SlackAppTKParser):
         self.name = parser.prog
         self.parser = parser
@@ -260,7 +252,6 @@ class SlashCommandCLI(object):
             handler = first(self.ic.listeners(event))
 
             if handler is None:
-                breakpoint()
                 rqst.app.log.critical(f"No handler for command option '{event}'")
                 return
 
@@ -289,19 +280,19 @@ class SlashCommandCLI(object):
             ns_args = self.parser.parse_args(rqst.argv, namespace=ns)
 
         except SlackAppTKParserExit:
-            return ''
+            return ""
 
         # the ns_args will have the cmd event _OR_ the User entered only up to
         # a sub parser name which will be used to identify the event.
 
-        event = getattr(ns_args, NS_ATTR_CMD) or ' '.join([self.parser.prog] + rqst.argv)
+        event = getattr(ns_args, NS_ATTR_CMD) or " ".join(
+            [self.parser.prog] + rqst.argv
+        )
         handler = first(self.cli.listeners(event))
 
         if handler is None:
-            cmd_str = ' '.join(rqst.argv)
-            raise SlackAppTKError(
-                f"{cmd_str}: no handler for event '{event}'"
-            )
+            cmd_str = " ".join(rqst.argv)
+            raise SlackAppTKError(f"{cmd_str}: no handler for event '{event}'")
 
         # detect if the callback wants the namespace parameters or not and
         # invoke the handler accordingly.
@@ -319,6 +310,7 @@ class SlashCommandCLI(object):
 #
 # -----------------------------------------------------------------------------
 
+
 class _TkHelpAction(_HelpAction):
     """ overrides the standard help action to support Slack messaging """
 
@@ -333,7 +325,7 @@ class _TkVersionAction(_VersionAction):
 
     def __call__(self, parser: SlackAppTKParser, namespace, values, option_string=None):
         rqst = parser.get_origin_rqst()
-        version = self.version or ''
+        version = self.version or ""
 
         # noinspection PyProtectedMember
         formatter = parser._get_formatter()

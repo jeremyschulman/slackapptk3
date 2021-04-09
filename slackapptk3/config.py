@@ -1,11 +1,10 @@
 from collections import UserDict
 
 
-__all__ = ['SlackAppConfig']
+__all__ = ["SlackAppConfig"]
 
 
 class SlackAppConfig(UserDict):
-
     def __init__(self):
         super(SlackAppConfig, self).__init__()
         self.signing_secret = None
@@ -13,6 +12,5 @@ class SlackAppConfig(UserDict):
 
     def from_obj(self, obj):
         self.update(obj)
-        self.signing_secret = obj['signing_secret']
-        self.token = obj['token']
-
+        self.signing_secret = obj["signing_secret"]
+        self.token = obj["token"]

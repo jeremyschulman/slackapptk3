@@ -3,19 +3,11 @@ import json
 
 from slackapptk3.request.any import AnyRequest
 
-__all__ = [
-    'AnyRequest',
-    'DialogRequest',
-    'InteractiveMessageRequest'
-]
+__all__ = ["AnyRequest", "DialogRequest", "InteractiveMessageRequest"]
 
 
 class DialogRequest(AnyRequest):
-    def __init__(
-        self,
-        app,
-        payload: Dict
-    ):
+    def __init__(self, app, payload: Dict):
         """
         Inbound request originated from a Dialog user interaction.
 
@@ -33,19 +25,15 @@ class DialogRequest(AnyRequest):
         """
         super().__init__(
             app=app,
-            rqst_type=payload['type'],
+            rqst_type=payload["type"],
             rqst_data=payload,
-            user_id=payload['user']['id']
+            user_id=payload["user"]["id"],
         )
-        self.state = json.loads(payload.get('state') or '{}')
+        self.state = json.loads(payload.get("state") or "{}")
 
 
 class InteractiveMessageRequest(AnyRequest):
-    def __init__(
-        self,
-        app,
-        payload: Dict
-    ):
+    def __init__(self, app, payload: Dict):
         """
         Interative Message attachments are an outmoded approach using Message Attachments.
         The new approach is to use Blocks.
@@ -61,9 +49,9 @@ class InteractiveMessageRequest(AnyRequest):
         """
         super().__init__(
             app=app,
-            rqst_type=payload['type'],
+            rqst_type=payload["type"],
             rqst_data=payload,
-            user_id=payload['user']['id']
+            user_id=payload["user"]["id"],
         )
-        self.user_name = payload['user']['name']
-        self.channel = payload['channel']['id']
+        self.user_name = payload["user"]["name"]
+        self.channel = payload["channel"]["id"]

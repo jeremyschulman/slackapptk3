@@ -4,14 +4,12 @@ import re
 import ipaddress
 
 
-_mac_char_re = re.compile(r'[0-9a-f]', re.I)
+_mac_char_re = re.compile(r"[0-9a-f]", re.I)
 
 
 # TODO: add return format option.  Currently hardcodes to "2x:" format.
 #
-def validate_macaddr(
-    macaddr
-) -> Optional[str]:
+def validate_macaddr(macaddr) -> Optional[str]:
     """
     Given `macaddr` string, determine that it is a valid MAC address
     containing only the specific supported alphanum values.
@@ -33,11 +31,11 @@ def validate_macaddr(
         return None
 
     ch_i = iter(char_list)
-    return ':'.join('%s%s' % (c, next(ch_i)) for c in ch_i)
+    return ":".join("%s%s" % (c, next(ch_i)) for c in ch_i)
 
 
 def validate_ipaddress(
-    ipaddr: str
+    ipaddr: str,
 ) -> Optional[Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]:
     """
     Given the IP address string, either return the enrobed ipaddress

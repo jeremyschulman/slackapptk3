@@ -5,13 +5,10 @@ import fnmatch
 import sre_constants
 
 
-__all__ = ['match_maker']
+__all__ = ["match_maker"]
 
 
-def match_maker(
-    pattern: str,
-    regex: Optional[bool] = False
-) -> Callable:
+def match_maker(pattern: str, regex: Optional[bool] = False) -> Callable:
     """
     This function returns a function that is responsible for determining a
     string-pattern-match.  This program supports two different types of
@@ -45,7 +42,7 @@ def match_maker(
 
     except sre_constants.error:
         raise ValueError(
-            f'Bad regular expression: {pattern}',
+            f"Bad regular expression: {pattern}",
         )
 
     def matcher(value):

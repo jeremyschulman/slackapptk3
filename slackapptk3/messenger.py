@@ -27,12 +27,13 @@ class Messenger(UserDict):
     with the context of a received Request message.  This use is suitable in contexts
     such as code running in a background thread.
     """
+
     def __init__(
         self,
-        app,        # SlackApp
+        app,  # SlackApp
         response_url: Optional[str] = None,
         channel: Optional[str] = None,
-        thread_ts: Optional[str] = None
+        thread_ts: Optional[str] = None,
     ):
         """
         Creates an instance of a Messenger based on the provided SlackAPp.
@@ -60,14 +61,12 @@ class Messenger(UserDict):
         self.channel = channel
 
         if thread_ts:
-            self['thread_ts'] = thread_ts
+            self["thread_ts"] = thread_ts
 
         self.client = AsyncWebClient(self.app.config.token)
 
     async def send_response(
-        self,
-        response_url: Optional[str] = None,
-        **kwargs: Optional[Any]
+        self, response_url: Optional[str] = None, **kwargs: Optional[Any]
     ):
         """
         This method is used to send a message via the response_url rathern
@@ -101,25 +100,23 @@ class Messenger(UserDict):
             # contents of messenger[UserDict]
             **self,
             # any other API fields
-            **kwargs
+            **kwargs,
         )
 
         api_url = response_url or self.response_url
 
-        res = await self.client._request(       # noqa
-                http_verb='POST',
-                api_url=api_url,
-                req_args=dict(json=req_args)
-            )
+        res = await self.client._request(  # noqa
+            http_verb="POST", api_url=api_url, req_args=dict(json=req_args)
+        )
 
-        status = res['status_code']
+        status = res["status_code"]
 
         if status != 200:
             raise SlackApiError(
-                message='Failed to send response_url: {}: status={}'.format(
+                message="Failed to send response_url: {}: status={}".format(
                     api_url, status
                 ),
-                response=res
+                response=res,
             )
 
         return True
@@ -140,7 +137,7 @@ class Messenger(UserDict):
             send a private message (via postEphemeral) to user
         """
 
-        if 'user' in kwargs:
+        if "user" in kwargs:
             api_call = self.client.chat_postEphemeral
 
         else:
@@ -151,5 +148,5 @@ class Messenger(UserDict):
             # contents of messenger[UserDict]
             **self,
             # any other API fields provided by Caller
-            **kwargs
+            **kwargs,
         )

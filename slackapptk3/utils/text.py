@@ -36,7 +36,8 @@ class TextBlockWrapper(TextWrapper):
         # list of text blocks each max len 3000
         text_blocks = wr.wrap(my_device_output)
     """
-    sentence_end_re = re.compile(r'(\n)(?=\S)')
+
+    sentence_end_re = re.compile(r"(\n)(?=\S)")
 
     def _split_chunks(self, text):
         return self.sentence_end_re.split(text)

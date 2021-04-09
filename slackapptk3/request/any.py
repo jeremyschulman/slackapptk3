@@ -5,18 +5,11 @@ if TYPE_CHECKING:
     from slackapptk3.app import SlackApp
 
 
-__all__ = ['AnyRequest']
+__all__ = ["AnyRequest"]
 
 
 class AnyRequest(object):
-
-    def __init__(
-        self,
-        app: "SlackApp",
-        rqst_type: str,
-        rqst_data: Dict,
-        user_id: str
-    ):
+    def __init__(self, app: "SlackApp", rqst_type: str, rqst_data: Dict, user_id: str):
         """
         An instance that represents any one of the many inbound requests from api.slack.com
 
@@ -42,9 +35,9 @@ class AnyRequest(object):
         self.user_id = user_id
 
         # default places to look for values in payload
-        self.response_url = self.rqst_data.get('response_url')
-        self.trigger_id = self.rqst_data.get('trigger_id')
-        self.channel = self.rqst_data.get('channel')
-        self.surface = self.rqst_data.get('container')
+        self.response_url = self.rqst_data.get("response_url")
+        self.trigger_id = self.rqst_data.get("trigger_id")
+        self.channel = self.rqst_data.get("channel")
+        self.surface = self.rqst_data.get("container")
 
         self.client = AsyncWebClient(token=self.app.config.token)

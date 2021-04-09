@@ -30,14 +30,10 @@ from uuid import uuid1
 from flask.sessions import SessionMixin
 
 
-__all__ = [
-    'PickleSlackSession',
-    'PickleCookieSession'
-]
+__all__ = ["PickleSlackSession", "PickleCookieSession"]
 
 
 class PickleSession(UserDict, SessionMixin):
-
     def __init__(self, session_if, session_id):
         super(PickleSession, self).__init__()
         self.session_if = session_if
@@ -47,27 +43,26 @@ class PickleSession(UserDict, SessionMixin):
 
     def read(self):
         try:
-            pdata = pickle.load(self.path.open('rb'))
+            pdata = pickle.load(self.path.open("rb"))
             self.update(pdata)
         except (FileNotFoundError, ValueError, EOFError, pickle.UnpicklingError):
             pass
 
     def save(self, *vargs, **kwargs):
-        with self.path.open('wb') as ofile:
+        with self.path.open("wb") as ofile:
             pickle.dump(dict(self), ofile)
 
 
 class PickleSlackSession(PickleSession):
-
     def save(self, *vargs, **kwargs):
         super(PickleSlackSession, self).save()
 
 
 class PickleCookieSession(PickleSession):
-
     def __init__(self, session_if, request, app):
-        sid = (request.cookies.get(app.session_cookie_name) or
-               '{}-{}'.format(uuid1(), os.getpid()))
+        sid = request.cookies.get(app.session_cookie_name) or "{}-{}".format(
+            uuid1(), os.getpid()
+        )
 
         super(PickleCookieSession, self).__init__(session_if, sid)
 
@@ -81,7 +76,10 @@ class PickleCookieSession(PickleSession):
             return
 
         cookie_exp = self.session_if.get_expiration_time(app, session)
-        response.set_cookie(app.session_cookie_name, session.sid,
-                            expires=cookie_exp, httponly=True, domain=domain)
-
-
+        response.set_cookie(
+            app.session_cookie_name,
+            session.sid,
+            expires=cookie_exp,
+            httponly=True,
+            domain=domain,
+        )

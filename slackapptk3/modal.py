@@ -7,10 +7,7 @@ from slackapptk3.web.classes.view import View
 from slackapptk3.errors import SlackAppTKError
 from slackapptk3.app import SlackApp
 
-__all__ = [
-    'Modal', 'ModalMode',
-    'View'
-]
+__all__ = ["Modal", "ModalMode", "View"]
 
 
 def with_callback(meth):
@@ -21,17 +18,14 @@ def with_callback(meth):
 
         if self.notify_on_close:
             self.view.notify_on_close = True
-            self.app.ic.view_closed.on(
-                self.view.callback_id,
-                self.notify_on_close
-            )
+            self.app.ic.view_closed.on(self.view.callback_id, self.notify_on_close)
 
         return meth(self, *args, **kwargs)
 
     return wrapper
 
 
-class ModalMode(IntEnum):          # noqa
+class ModalMode(IntEnum):  # noqa
     OPEN = auto()
     PUSH = auto()
     UPDATE = auto()
@@ -43,7 +37,7 @@ class Modal(object):
         rqst: AnyRequest,
         view: Optional[View] = None,
         detached: Optional[bool] = False,
-        callback: Optional[Callable] = None
+        callback: Optional[Callable] = None,
     ):
         """
 
@@ -69,14 +63,12 @@ class Modal(object):
         self.app: SlackApp = rqst.app
 
         def from_payload_or_new():
-            if 'view' in rqst.rqst_data:
-                return View.from_view(rqst.rqst_data['view'])
+            if "view" in rqst.rqst_data:
+                return View.from_view(rqst.rqst_data["view"])
             return View(type="modal")
 
         if view and not isinstance(view, View):
-            raise SlackAppTKError(
-                f'caller provided view not of View origin'
-            )
+            raise SlackAppTKError("caller provided view not of View origin")
 
         self.view = view or from_payload_or_new()
         self.detached = detached
@@ -92,41 +84,29 @@ class Modal(object):
     @with_callback
     async def open(self):
         return await self.rqst.client.views_open(
-            trigger_id=self.rqst.trigger_id,
-            view=self.view.to_dict())
-
-    @with_callback
-    async def update(self):
-        if self.rqst.rqst_type == 'view_submission' and not self.detached:
-            return {
-                'response_action': 'update',
-                'view': self.view.to_dict()
-            }
-
-        if hasattr(self.view, 'view_id'):
-            kwargs = dict(
-                view=self.view.to_dict(),
-                view_id=self.view.view_id
-            )
-
-            if not self.detached:
-                kwargs['hash'] = self.view.view_hash
-
-            return await self.rqst.client.views_update(**kwargs)
-
-        raise SlackAppTKError(
-            f'Attempting to update view in unknown context'
+            trigger_id=self.rqst.trigger_id, view=self.view.to_dict()
         )
 
     @with_callback
+    async def update(self):
+        if self.rqst.rqst_type == "view_submission" and not self.detached:
+            return {"response_action": "update", "view": self.view.to_dict()}
+
+        if hasattr(self.view, "view_id"):
+            kwargs = dict(view=self.view.to_dict(), view_id=self.view.view_id)
+
+            if not self.detached:
+                kwargs["hash"] = self.view.view_hash
+
+            return await self.rqst.client.views_update(**kwargs)
+
+        raise SlackAppTKError("Attempting to update view in unknown context")
+
+    @with_callback
     async def push(self):
-        if self.rqst.rqst_type == 'view_submission':
-            return {
-                'response_action': 'push',
-                'view': self.view.to_dict()
-            }
+        if self.rqst.rqst_type == "view_submission":
+            return {"response_action": "push", "view": self.view.to_dict()}
 
         return await self.rqst.client.views_push(
-            trigger_id=self.rqst.trigger_id,
-            view=self.view.to_dict()
+            trigger_id=self.rqst.trigger_id, view=self.view.to_dict()
         )

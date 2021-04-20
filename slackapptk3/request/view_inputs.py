@@ -8,11 +8,18 @@
 __all__ = ["get_input_value"]
 
 
+def _static_select(e):
+    if not (opt := e.get("selected_option")):
+        return None
+
+    return opt["value"]
+
+
 VIEW_INPUT_TYPE_VALUE = {
     "plain_text_input": lambda e: e.get("value"),
     "datepicker": lambda e: e.get("selected_date"),
     # single select elements:
-    "static_select": lambda e: e.get("selected_option", {}).get("value"),
+    "static_select": _static_select,
     "external_select": lambda e: e.get("selected_option", {}).get("value"),
     "users_select": lambda e: e.get("selected_user"),
     "conversations_select": lambda e: e.get("selected_conversation"),

@@ -151,19 +151,13 @@ class SlackClickHelper(Command):
             if isinstance(cli_coro, Coroutine):
                 return await cli_coro
 
-        except click.exceptions.BadOptionUsage as exc:
-            ctx = self.make_context(self.name, args, obj=ctx_obj)
-            await slack_send_usage_help(ctx, errmsg=exc.format_message())
-            return
-
-        except click.exceptions.MissingParameter as exc:
-            ctx = exc.ctx or click_context.get()
-            await slack_send_usage_help(ctx, errmsg=exc.format_message())
-            return
-
         except click.exceptions.UsageError as exc:
-            ctx = exc.ctx or click_context.get()
-            await slack_send_usage_help(ctx, errmsg=exc.show())
+            ctx = (
+                exc.ctx
+                or click_context.get()
+                or self.make_context(self.name, args, obj=ctx_obj)
+            )
+            await slack_send_usage_help(ctx, errmsg=exc.format_message())
             return
 
         except click.exceptions.Exit:

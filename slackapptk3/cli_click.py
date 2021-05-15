@@ -1,8 +1,22 @@
+#  Copyright 2021 Jeremy Schulman, nwkautomaniac@gmail.com
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 # -----------------------------------------------------------------------------
 # System Imports
 # -----------------------------------------------------------------------------
 
-from typing import Optional, Coroutine
+from typing import Coroutine
 import asyncio
 from functools import wraps
 from contextvars import ContextVar
@@ -13,8 +27,7 @@ from contextvars import ContextVar
 
 import click
 from click import decorators
-from click import Command, Option, Group, Context
-from click.globals import get_current_context
+from click import Command, Option, Group
 from slackapptk3.response import Response
 from slackapptk3.request.command import CommandRequest
 from first import first
@@ -26,16 +39,32 @@ import pyee
 #
 # -----------------------------------------------------------------------------
 
-click_context = ContextVar("click_context")
 
-# -----------------------------------------------------------------------------
-#
-#                                 CODE BEGINS
-#
-# -----------------------------------------------------------------------------
+def version_option(version: str, *param_decls, **attrs):
+    """
+    The Click version_option decorator used to support asyncio Slack
+    applications.
 
+    Parameters
+    ----------
+    version:
+        The version string; required.
 
-def version_option(version=None, *param_decls, **attrs):
+    param_decls:
+        The list of parameter declarations as they are documented in
+        Click.version_option.  These are optional; and adds "--version" just as
+        it would with the Click package.
+
+    attrs
+        The keyword arguments supported by Click.version_option; used in the
+        same manner as Click.
+
+    Returns
+    -------
+    The decorator to be used as one would normally use @click.version_option(...)
+
+    """
+
     async def send_version(ctx, message):
         rqst: CommandRequest = ctx.obj["rqst"]
         await Response(rqst).send(text=message)
@@ -66,16 +95,48 @@ def version_option(version=None, *param_decls, **attrs):
     return decorator
 
 
-async def slack_send_usage_help(ctx: Context, errmsg: Optional[str] = None):
-    help_text = ctx.get_help()
-    rqst: CommandRequest = ctx.obj["rqst"]
-    resp = Response(rqst)
+class SlackClickHelper(Command):
+    def __init__(self, *vargs, **kwargs):
+        self.event_id = kwargs.get("name")
+        super(SlackClickHelper, self).__init__(*vargs, **kwargs)
 
-    atts = resp["attachments"] = list()
-    try_cmd = f"{rqst.rqst_data['command']} {rqst.rqst_data['text']}"
-    user_id = rqst.user_id
+    @staticmethod
+    def format_slack_usage_help(rqst: CommandRequest, ctx: click.Context, errmsg: str):
+        """
+        This function returns a dictionary formatted with the Slack message
+        that will be sent to the User upon any command usage error.  As a
+        Developer you may want to change the response content/format for this
+        type of help.
 
-    if errmsg:
+        Parameters
+        ----------
+        rqst: CommandRequest
+            The origin Slack command request that provides information about the command
+            requested.  The rqst.rqst_data['command'] contains the slash-command used
+            and the rqst.rqst_data['text'] contains the command parameters as entered by the
+            User.  The rqst.user_id contains the Slack UserId that originated the request.
+            For more inforamtion about the CommandRequest class attributes, refer to that
+            class definition.
+
+        ctx: click.Context
+            The Click context processing the User command.
+
+        errmsg: str
+            The speific usage error message, generally produced by the Click package depending
+            on the offending User input.
+
+        Returns
+        -------
+        dict
+            The Slack message body dictionary that will be returned to the Slack User.
+        """
+        help_text = ctx.get_help()
+        msg_body = dict()
+        atts = msg_body["attachments"] = list()
+
+        try_cmd = f"{rqst.rqst_data['command']} {rqst.rqst_data['text']}"
+        user_id = rqst.user_id
+
         atts.append(
             dict(
                 color="#FF0000",  # red
@@ -87,25 +148,15 @@ async def slack_send_usage_help(ctx: Context, errmsg: Optional[str] = None):
 
         atts.append(dict(text=f"```{errmsg}```", fallback=errmsg))
 
-    atts.append(
-        dict(pretext="Command help", text=f"```{help_text}```", fallback=help_text)
-    )
+        atts.append(
+            dict(pretext="Command help", text=f"```{help_text}```", fallback=help_text)
+        )
+        return msg_body
 
-    await resp.send()
-
-
-async def slack_send_help(ctx: Context):
-    help_text = ctx.get_help()
-    rqst: CommandRequest = ctx.obj["rqst"]
-    resp = Response(rqst)
-
-    await resp.send(text=f"*Command help:*\n```{help_text}```", fallback=help_text)
-
-
-class SlackClickHelper(Command):
-    def __init__(self, *vargs, **kwargs):
-        self.event_id = kwargs.get("name")
-        super(SlackClickHelper, self).__init__(*vargs, **kwargs)
+    @staticmethod
+    def format_slack_help(ctx: click.Context):
+        help_text = ctx.get_help()
+        return dict(text=f"*Command help:*\n```{help_text}```", fallback=help_text)
 
     def get_help_option(self, ctx):
         help_options = self.get_help_option_names(ctx)
@@ -114,7 +165,9 @@ class SlackClickHelper(Command):
 
         def slack_show_help(_ctx: click.Context, param, value):  # noqa
             if value and not _ctx.resilient_parsing:
-                asyncio.create_task(slack_send_help(_ctx))
+                payload = self.format_slack_help(_ctx)
+                resp = Response(_ctx.obj["rqst"])
+                asyncio.create_task(resp.send(**payload))
                 _ctx.exit()
 
         return Option(
@@ -157,7 +210,11 @@ class SlackClickHelper(Command):
                 or click_context.get()
                 or self.make_context(self.name, args, obj=ctx_obj)
             )
-            await slack_send_usage_help(ctx, errmsg=exc.format_message())
+            payload = self.format_slack_usage_help(
+                rqst, ctx, errmsg=exc.format_message()
+            )
+            resp = Response(rqst)
+            await resp.send(**payload)
             return
 
         except click.exceptions.Exit:
@@ -180,7 +237,7 @@ class SlackClickGroup(SlackClickHelper, Group):
 
         @wraps(f)
         def new_callback(*vargs, **kwargs):
-            ctx = get_current_context()
+            ctx = _contextvar_get_current_context()
             if ctx.invoked_subcommand:
                 return
 
@@ -223,3 +280,43 @@ class SlackClickGroup(SlackClickHelper, Group):
             return
 
         return await handler(rqst)
+
+
+# -----------------------------------------------------------------------------
+#    WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING! WARNING!
+# -----------------------------------------------------------------------------
+#                   Monkey-Patching Click for Asyncio Support
+# -----------------------------------------------------------------------------
+
+# the click context "context var" is used to support asyncio environments; and
+# the following private function _contextvar_get_current_context is
+# monkeypatched into the Click package do avoid the use of the threading.local
+# stack (as implemented in Click).
+
+
+click_context = ContextVar("click_context")
+
+
+def _contextvar_get_current_context(silent=False):
+    """Returns the current click context.  This can be used as a way to
+    access the current context object from anywhere.  This is a more implicit
+    alternative to the :func:`pass_context` decorator.  This function is
+    primarily useful for helpers such as :func:`echo` which might be
+    interested in changing its behavior based on the current context.
+
+    To push the current context, :meth:`Context.scope` can be used.
+
+    .. versionadded:: 5.0
+
+    :param silent: if set to `True` the return value is `None` if no context
+                   is available.  The default behavior is to raise a
+                   :exc:`RuntimeError`.
+    """
+    try:
+        return click_context.get()
+    except LookupError:
+        if not silent:
+            raise RuntimeError("There is no active click context.")
+
+
+click.decorators.get_current_context = _contextvar_get_current_context

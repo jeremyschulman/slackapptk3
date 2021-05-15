@@ -26,6 +26,7 @@ from inspect import signature
 
 from first import first
 import pyee
+from click.globals import get_current_context
 
 from slack_sdk.models import extract_json
 from slack_sdk.models.blocks import Option, OptionGroup
@@ -37,7 +38,7 @@ from slack_sdk.models.blocks import Option, OptionGroup
 from slackapptk3.errors import SlackAppTKError
 from slackapptk3.config import SlackAppConfig
 from slackapptk3.request import view_inputs
-from slackapptk3.cli import SlashCommandCLI
+
 
 from slackapptk3.request.all import (
     CommandRequest,
@@ -56,7 +57,7 @@ from slackapptk3.request.action_event import (
 )
 
 
-__all__ = ["SlackApp", "SlashCommandCLI"]
+__all__ = ["SlackApp"]
 
 
 class SlackAppInteractiveHandlers(object):
@@ -74,9 +75,30 @@ class SlackAppCommands(object):
         self.app = app
         self._registry = dict()
 
-    def register(self, parser):
-        cmd = self._registry[parser.prog] = SlashCommandCLI(parser=parser)
-        return cmd
+    # def register(self, parser):
+    #     cmd = self._registry[parser.name] = parser
+    #     return cmd
+
+    def register(self):
+        def wrapped(f):
+            orig_callback = f.callback
+
+            def new_callback(*vargs, **kwargs):
+                ctx = get_current_context()
+                if ctx.invoked_subcommand:
+                    return
+
+                # presume the orig_callback was defined as an async def.  Therefore
+                # defer the execution of the coroutine to the calling main.
+                return orig_callback(*vargs, **kwargs)
+
+            f.callback = new_callback
+            self._registry[f.name] = f  # noqa
+            f.name = "/" + f.name
+            f.event_name = f.name
+            return f
+
+        return wrapped
 
     async def run(self, *, name: str, rqst: CommandRequest):
         """
@@ -112,7 +134,7 @@ class SlackAppCommands(object):
 class SlackApp(object):
     def __init__(self):
         self.log = getLogger(__name__)
-        self.slash_commands: Dict[str, SlashCommandCLI] = dict()
+        # self.slash_commands: Dict[str, SlashCommandCLI] = dict()
         self.commands = SlackAppCommands(self)
         self.ic = SlackAppInteractiveHandlers()
 

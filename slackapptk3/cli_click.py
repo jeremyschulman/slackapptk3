@@ -179,13 +179,12 @@ class SlackClickHelper(Command):
             help="Show this message and exit.",
         )
 
-    def invoke(self, ctx):
-        """
-        return the coroutine ready for await, but cannot await here ...
-        execution deferred to the `run` method that is async.
-        """
-        click_context.set(ctx)
-        return super().invoke(ctx)
+    def make_context(self, info_name, args, parent=None, **extra):
+        ctx = super(SlackClickHelper, self).make_context(
+            info_name=info_name, args=args, parent=parent, **extra
+        )
+        g_click_context.set(ctx)
+        return ctx
 
     async def run(self, rqst, **_extras):
         args = rqst.rqst_data["text"].split()
@@ -207,7 +206,7 @@ class SlackClickHelper(Command):
         except click.exceptions.UsageError as exc:
             ctx = (
                 exc.ctx
-                or click_context.get()
+                or g_click_context.get()
                 or self.make_context(self.name, args, obj=ctx_obj)
             )
             payload = self.format_slack_usage_help(
@@ -237,7 +236,7 @@ class SlackClickGroup(SlackClickHelper, Group):
 
         @wraps(f)
         def new_callback(*vargs, **kwargs):
-            ctx = _contextvar_get_current_context()
+            ctx = get_current_context()
             if ctx.invoked_subcommand:
                 return
 
@@ -294,10 +293,10 @@ class SlackClickGroup(SlackClickHelper, Group):
 # stack (as implemented in Click).
 
 
-click_context = ContextVar("click_context")
+g_click_context = ContextVar("click_context")
 
 
-def _contextvar_get_current_context(silent=False):
+def get_current_context(silent=False):
     """Returns the current click context.  This can be used as a way to
     access the current context object from anywhere.  This is a more implicit
     alternative to the :func:`pass_context` decorator.  This function is
@@ -313,10 +312,10 @@ def _contextvar_get_current_context(silent=False):
                    :exc:`RuntimeError`.
     """
     try:
-        return click_context.get()
+        return g_click_context.get()
     except LookupError:
         if not silent:
             raise RuntimeError("There is no active click context.")
 
 
-click.decorators.get_current_context = _contextvar_get_current_context
+click.decorators.get_current_context = get_current_context

@@ -19,6 +19,7 @@
 from logging import getLogger
 from typing import Optional, Dict, List
 from inspect import signature
+from itertools import chain
 
 # -----------------------------------------------------------------------------
 # Public Imports
@@ -351,11 +352,15 @@ class SlackApp(object):
             Response message to send back to api.slack.com
         """
         payload_action = first(rqst.rqst_data["actions"])
-        event = payload_action["block_id"]
-        callback = first(self.ic.block_action.listeners(event))
+        callback = first(
+            chain(
+                self.ic.block_action.listeners(payload_action["block_id"]),
+                self.ic.block_action.listeners(payload_action["action_id"]),
+            )
+        )
 
         if callback is None:
-            msg = f"No handler for block action event: {event}"
+            msg = f"No handler for block action event: {payload_action}"
             self.log.error(msg)
             return
 
@@ -363,6 +368,7 @@ class SlackApp(object):
         # expecting the action value, then invoke the callback now.
 
         sig_cal = signature(callback)
+
         if len(sig_cal.parameters) == 1:
             return await callback(rqst)
 
